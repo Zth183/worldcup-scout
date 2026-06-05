@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WORLD CUP SCOUT · 2026</title>
+<meta name="referrer" content="no-referrer">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -124,6 +125,19 @@
       </div>
     </div>
   </main>
+
+  <!-- 音乐播放器 -->
+  <div id="musicPlayer">
+    <div id="playerBar">
+      <span class="player-icon" id="playerToggle">▶</span>
+      <span class="player-song" id="playerSong">Waka Waka · Shakira</span>
+      <span class="player-year" id="playerYear">2010</span>
+      <span class="player-prev" id="playerPrev">◁</span>
+      <span class="player-next" id="playerNext">▷</span>
+      <span class="player-badge">♪</span>
+    </div>
+  </div>
+  <audio id="wcAudio" preload="none" crossorigin="anonymous"></audio>
 
   <footer id="footer">
     <span>Data: WhoScored · LightGBM · Z-Score</span>

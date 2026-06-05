@@ -4,9 +4,10 @@
 import sys, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-from fastapi import FastAPI, Query
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+import httpx
 import pymysql
 import os
 
@@ -47,10 +48,10 @@ def get_players(
 ):
     conn = get_db()
     cur = conn.cursor(pymysql.cursors.DictCursor)
-    sql = "SELECT * FROM 最终世界杯前锋报告 WHERE 1=1"
+    sql = "SELECT * FROM scout_forwards WHERE 1=1"
     params = []
     if role:
-        sql += " AND 战术角色中文 = %s"
+        sql += " AND role_cn = %s"
         params.append(role)
     if league:
         sql += " AND league_name = %s"
@@ -62,9 +63,9 @@ def get_players(
         sql += " AND age <= %s"
         params.append(max_age)
     if min_score > 0:
-        sql += " AND Apex_Role_Scout_Score >= %s"
+        sql += " AND apex_score >= %s"
         params.append(min_score)
-    sql += " ORDER BY Apex_Role_Scout_Score DESC"
+    sql += " ORDER BY apex_score DESC"
     cur.execute(sql, params)
     rows = cur.fetchall()
     cur.close()
@@ -78,7 +79,7 @@ def get_players(
 def get_player(player_id: int):
     conn = get_db()
     cur = conn.cursor(pymysql.cursors.DictCursor)
-    cur.execute("SELECT * FROM 最终世界杯前锋报告 WHERE player_id = %s", (player_id,))
+    cur.execute("SELECT * FROM scout_forwards WHERE player_id = %s", (player_id,))
     row = cur.fetchone()
     cur.close()
     conn.close()
@@ -88,12 +89,40 @@ def get_player(player_id: int):
 def get_filters():
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT DISTINCT 战术角色中文 FROM 最终世界杯前锋报告 ORDER BY 战术角色中文")
+    cur.execute("SELECT DISTINCT role_cn FROM scout_forwards ORDER BY role_cn")
     roles = [r[0] for r in cur.fetchall()]
-    cur.execute("SELECT DISTINCT league_name FROM 最终世界杯前锋报告 WHERE league_name IS NOT NULL ORDER BY league_name")
+    cur.execute("SELECT DISTINCT league_name FROM scout_forwards WHERE league_name IS NOT NULL ORDER BY league_name")
     leagues = [r[0] for r in cur.fetchall()]
-    cur.execute("SELECT MIN(age), MAX(age), COUNT(*) FROM 最终世界杯前锋报告")
+    cur.execute("SELECT MIN(age), MAX(age), COUNT(*) FROM scout_forwards")
     min_a, max_a, total = cur.fetchone()
     cur.close()
     conn.close()
     return {"roles": roles, "leagues": leagues, "min_age": min_a, "max_age": max_a, "total": total}
+
+import asyncio
+
+@app.get("/api/music/{song_id}")
+async def proxy_music(song_id: int, request: Request):
+    """代理网易云音乐音频"""
+    url = f"https://music.163.com/song/media/outer/url?id={song_id}.mp3"
+    range_header = request.headers.get("range", "")
+    headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://music.163.com/"}
+    if range_header:
+        headers["Range"] = range_header
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(url, headers=headers, follow_redirects=True)
+            content_type = resp.headers.get("content-type", "audio/mpeg")
+            resp_headers = {}
+            if "content-range" in resp.headers:
+                resp_headers["content-range"] = resp.headers["content-range"]
+            if "accept-ranges" in resp.headers:
+                resp_headers["accept-ranges"] = resp.headers["accept-ranges"]
+            return StreamingResponse(
+                resp.aiter_bytes(),
+                media_type=content_type,
+                status_code=resp.status_code,
+                headers=resp_headers,
+            )
+    except Exception as e:
+        return {"error": str(e)}

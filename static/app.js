@@ -114,10 +114,12 @@ function footballFly(x, y, callback) {
     document.querySelectorAll('#ageFilters .chip').forEach(el => {
       el.onclick = () => toggleFilter('age', el.dataset.age);
     });
-    // 特殊 chips
-    document.querySelectorAll('#specialFilters .chip').forEach(el => {
-      el.onclick = () => toggleFilter('special', el.dataset.special);
-    });
+    // 特殊 chips — 加All选项
+    const sc = document.getElementById('specialFilters');
+    sc.innerHTML = ''; // 清空硬编码的
+    sc.appendChild(chip('All', '', 'special'));
+    sc.appendChild(chip('⚡ Overvalued', 'high溢价', 'special'));
+    sc.appendChild(chip('🏅 Top 20', 'top20', 'special'));
 
     // 搜索
     document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -187,7 +189,7 @@ async function loadData() {
     data = data.filter(d => (d.Value_Exploitation_Index||0) >= 1.03);
     data.sort((a,b) => (b.Value_Exploitation_Index||0) - (a.Value_Exploitation_Index||0));
   } else if (activeFilters.special === 'top20') {
-    data = data.sort((a,b) => b.Apex_Role_Scout_Score - a.Apex_Role_Scout_Score).slice(0, 20);
+    data = data.sort((a,b) => b.apex_score - a.apex_score).slice(0, 20);
   }
   allPlayers = data;
   document.getElementById('totalCount').textContent = allPlayers.length;
@@ -200,16 +202,16 @@ function renderBubble(data) {
 
   const ageMax = {};
   players.forEach(p => {
-    const a = Math.floor(p.age), s = p.Apex_Role_Scout_Score||0;
+    const a = Math.floor(p.age), s = p.apex_score||0;
     if (!ageMax[a] || s > ageMax[a]) ageMax[a] = s;
   });
   const ages = Object.keys(ageMax).map(Number).sort((a,b)=>a-b);
   const frontier = ages.map(a => [a, ageMax[a]]);
 
   const scatter = players.map(p => ({
-    value: [p.age, p.Apex_Role_Scout_Score, (p.bubble_size||10), (p.AI_True_Value||0)],
+    value: [p.age, p.apex_score, (p.bubble_size||10), (p.AI_True_Value||0)],
     name: p.name,
-    itemStyle: { color: ROLE_COLORS[p['战术角色中文']] || '#5A5048' },
+    itemStyle: { color: ROLE_COLORS[p['role_cn']] || '#5A5048' },
     _player: p,
   }));
 
@@ -221,8 +223,8 @@ function renderBubble(data) {
       formatter:(p) => {
         const d = p.data._player; if (!d) return '';
         return `<strong style="font-size:15px;color:#E8D5A3">${d.name}</strong><br/>
-          <span style="color:#8A8070">${d['战术角色中文']}</span><br/><br/>
-          Score: <strong>${fmt(d.Apex_Role_Scout_Score)}</strong><br/>
+          <span style="color:#8A8070">${d['role_cn']}</span><br/><br/>
+          Score: <strong>${fmt(d.apex_score)}</strong><br/>
           Value: ${fmtM(d.AI_True_Value)} · Premium: ${(d.Value_Exploitation_Index||0).toFixed(2)}`;
       }
     },
@@ -263,7 +265,7 @@ function renderBubble(data) {
   bc.on('click', (p) => {
     if (!p.data?._player) return;
     // 获取泡泡屏幕位置
-    const pos = bc.convertToPixel({seriesIndex:0}, [p.data._player.age, p.data._player.Apex_Role_Scout_Score]);
+    const pos = bc.convertToPixel({seriesIndex:0}, [p.data._player.age, p.data._player.apex_score]);
     if (pos) {
       footballFly(pos[0], pos[1], () => showDetail(p.data._player));
     } else {
@@ -276,7 +278,7 @@ function renderBubble(data) {
 function showDetail(d) {
   closeDetail();
   requestAnimationFrame(() => {
-    document.getElementById('detailRole').textContent = d['战术角色中文']||'—';
+    document.getElementById('detailRole').textContent = d['role_cn']||'—';
     document.getElementById('detailName').textContent = d.name||'—';
     document.getElementById('detailNation').textContent = d.nationality_cn||'—';
     document.getElementById('detailClub').textContent = d.team_name||'—';
@@ -296,7 +298,7 @@ function showDetail(d) {
     }
 
     // KPI 数字滚动
-    const score = d.Apex_Role_Scout_Score;
+    const score = d.apex_score;
     const val = d.AI_True_Value || 0;
     const prem = d.Value_Exploitation_Index || 0;
     const goals = d.goal || 0;
@@ -377,3 +379,94 @@ function renderRadar(d) {
 function closeDetail() {
   document.getElementById('detailPanel').classList.add('hidden');
 }
+
+// =============================================================
+// 音乐播放器 · 世界杯主题曲 (网易云音乐源)
+// =============================================================
+const WC_SONGS = [
+  { title: 'The Time Of Our Lives', artist: 'Il Divo', year: '06', nid: '5178518' },
+  { title: 'Waka Waka', artist: 'Shakira', year: '10', nid: '24485811' },
+  { title: 'We Are One', artist: 'Pitbull × JLo', year: '14', nid: '28240407' },
+  { title: 'Live It Up', artist: 'Nicky Jam × W.Smith', year: '18', nid: '567098860' },
+  { title: 'Dreamers', artist: 'Jung Kook', year: '22', nid: '1999817550' },
+];
+
+let songIdx = 0;
+let isPlaying = false;
+const audio = document.getElementById('wcAudio');
+
+function songUrl(idx) { return '/api/music/' + WC_SONGS[idx].nid; }
+
+function updateSongDisplay() {
+  const s = WC_SONGS[songIdx];
+  document.getElementById('playerSong').textContent = s.title + ' · ' + s.artist;
+  document.getElementById('playerYear').textContent = s.year;
+}
+function updatePlayerUI() { document.getElementById('playerToggle').textContent = isPlaying ? '⏸' : '▶'; }
+
+function loadSong(idx) {
+  songIdx = idx;
+  updateSongDisplay();
+  isPlaying = false;
+  updatePlayerUI();
+
+  // 清除旧的播放监听，避免冲突
+  audio.removeEventListener('canplaythrough', autoPlayHandler);
+  audio.pause();
+  audio.src = songUrl(idx);
+  audio.load();
+
+  // 等加载完成后自动播放
+  audio.addEventListener('canplaythrough', autoPlayHandler, { once: true });
+}
+function autoPlayHandler() {
+  audio.play().then(() => {
+    isPlaying = true;
+    updatePlayerUI();
+  }).catch(() => {});
+}
+
+function togglePlay() {
+  if (!audio.src) { loadSong(0); return; }
+  if (audio.paused) {
+    if (audio.readyState < 2) {
+      audio.play().catch(() => loadSong(songIdx));
+    } else {
+      audio.play().then(() => { isPlaying = true; updatePlayerUI(); }).catch(() => {});
+    }
+  } else {
+    audio.pause(); isPlaying = false; updatePlayerUI();
+  }
+}
+function playPrev() {
+  const idx = (songIdx - 1 + WC_SONGS.length) % WC_SONGS.length;
+  loadSong(idx);
+}
+function playNext() {
+  const idx = (songIdx + 1) % WC_SONGS.length;
+  loadSong(idx);
+}
+
+function togglePlay() {
+  if (!audio.src) { loadSong(0); return; }
+  if (audio.paused) {
+    audio.play().then(() => { isPlaying = true; updatePlayerUI(); }).catch(() => {});
+  } else {
+    audio.pause(); isPlaying = false; updatePlayerUI();
+  }
+}
+function playPrev() { loadSong((songIdx - 1 + WC_SONGS.length) % WC_SONGS.length); }
+function playNext() { loadSong((songIdx + 1) % WC_SONGS.length); }
+
+audio.addEventListener('ended', playNext);
+audio.addEventListener('play', () => { isPlaying = true; updatePlayerUI(); });
+audio.addEventListener('pause', () => { isPlaying = false; updatePlayerUI(); });
+audio.addEventListener('error', (e) => { console.log('Audio error, reloading...'); });
+
+document.getElementById('playerToggle').onclick = (e) => { e.stopPropagation(); togglePlay(); };
+document.getElementById('playerPrev').onclick = (e) => { e.stopPropagation(); playPrev(); };
+document.getElementById('playerNext').onclick = (e) => { e.stopPropagation(); playNext(); };
+document.getElementById('playerBar').onclick = (e) => {
+  if (!e.target.closest('.player-icon') && !e.target.closest('.player-prev') && !e.target.closest('.player-next'))
+    togglePlay();
+};
