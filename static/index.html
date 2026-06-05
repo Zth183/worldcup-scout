@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WORLD CUP SCOUT · 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+  <!-- 顶栏 -->
+  <header id="header">
+    <div class="header-left">
+      <div class="logo-mark">⚽</div>
+      <div>
+        <div class="logo-title">WORLD CUP SCOUT</div>
+        <div class="logo-sub">TECHNICAL REPORT · 2026</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search player..." autocomplete="off">
+      </div>
+      <div class="header-stats">
+        <span><span class="stat-num" id="totalCount">—</span> PLRS</span>
+        <span class="stat-divider"></span>
+        <span><span class="stat-num" id="roleCount">—</span> ROLES</span>
+      </div>
+      <button class="btn-ghost" id="btnExportAll">📄 Export</button>
+    </div>
+  </header>
+
+  <!-- 筛选 -->
+  <section id="filters">
+    <div class="filter-group">
+      <span class="filter-label">Role</span>
+      <div class="filter-chips" id="roleFilters"></div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">League</span>
+      <div class="filter-chips" id="leagueFilters"></div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Age</span>
+      <div class="filter-chips" id="ageFilters">
+        <span class="chip active" data-age="all">All</span>
+        <span class="chip" data-age="u21">U21</span>
+        <span class="chip" data-age="prime">Prime 22–27</span>
+        <span class="chip" data-age="veteran">28+</span>
+      </div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Special</span>
+      <div class="filter-chips" id="specialFilters">
+        <span class="chip" data-special="high溢价">⚡ Overvalued</span>
+        <span class="chip" data-special="top20">🏅 Top 20</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 主区 -->
+  <main id="main">
+    <div id="chartSection">
+      <div id="bubbleChart"></div>
+      <div id="chartLegend">
+        <span style="color:#5B8DEF">● 前腰大脑</span>
+        <span style="color:#FF6B35">● 禁区狐狸</span>
+        <span style="color:#00E676">● 回撤九号</span>
+        <span style="color:#FFD700">● 边路爆破手</span>
+        <span style="color:#FF69B4">● 压迫工兵</span>
+        <span class="legend-hint">Bubble ∅ = AI value · Click → ⚽ fly</span>
+      </div>
+    </div>
+
+    <!-- 详情面板 -->
+    <div id="detailPanel" class="hidden">
+      <div id="detailOverlay"></div>
+      <div id="detailContent">
+        <div class="detail-header">
+          <span class="detail-role-badge" id="detailRole">—</span>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <h2 id="detailName">—</h2>
+              <p class="detail-meta">
+                <span id="detailNation">—</span>
+                <span class="meta-divider">·</span>
+                <span id="detailClub">—</span>
+                <span class="meta-divider">·</span>
+                <span id="detailLeague">—</span>
+                <span class="meta-divider">·</span>
+                <span id="detailAge">—</span>
+              </p>
+            </div>
+            <div class="detail-actions">
+              <button class="btn-ghost" id="btnPdf">📄</button>
+              <button class="btn-close" id="btnCloseDetail">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-kpi-grid">
+          <div class="kpi-card"><span class="kpi-label">Score</span><span class="kpi-value accent" id="kpiScore">0</span></div>
+          <div class="kpi-card"><span class="kpi-label">Value</span><span class="kpi-value" id="kpiValue">0</span></div>
+          <div class="kpi-card"><span class="kpi-label">Premium</span><span class="kpi-value gold" id="kpiPremium">0</span></div>
+          <div class="kpi-card"><span class="kpi-label">Goals</span><span class="kpi-value" id="kpiGoals">0</span></div>
+        </div>
+
+        <div class="detail-section">
+          <h4 class="section-title">Radar · Key Attributes</h4>
+          <div id="radarChart"></div>
+        </div>
+
+        <div class="detail-section">
+          <h4 class="section-title">Detailed Statistics</h4>
+          <div class="detail-stats-grid" id="detailStats"></div>
+        </div>
+
+        <!-- 俱乐部官网链接 -->
+        <div class="detail-section" style="margin-top:16px;padding-top:12px;border-top:1px solid #1E1E2A">
+          <a id="clubLink" href="#" target="_blank" rel="noopener" style="color:#C9A84C;font-size:12px;text-decoration:none;display:none">🌐 官网 →</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer id="footer">
+    <span>Data: WhoScored · LightGBM · Z-Score</span>
+    <span>·</span>
+    <span>48 Teams · 385 Forwards</span>
+  </footer>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
